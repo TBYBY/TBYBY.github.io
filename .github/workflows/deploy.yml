@@ -1,0 +1,50 @@
+name: Hexo Deploy
+
+on:
+  push:
+    branches:
+      - main  # 当 main 分支有推送时触发
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+  - name: Checkout
+    uses: actions/checkout@v4
+
+  - name: Setup Node.js
+    uses: actions/setup-node@v4
+    with:
+      node-version: '20'  # 建议与本地 Node.js 版本保持一致
+
+  - name: Cache NPM dependencies
+    uses: actions/cache@v4
+    with:
+      path: node_modules
+      key: ${{ runner.OS }}-npm-cache-${{ hashFiles('**/package-lock.json') }}
+      restore-keys: |
+        ${{ runner.OS }}-npm-cache-
+
+  - name: Install Dependencies
+    run: npm install
+
+  - name: Build
+    run: npm run build
+
+  - name: Upload Pages artifact
+    uses: actions/upload-pages-artifact@v3
+    with:
+      path: ./public
+
+  - name: Deploy to GitHub Pages
+    id: deployment
+    uses: actions/deploy-pages@v4
