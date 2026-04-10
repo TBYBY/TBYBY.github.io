@@ -3,10 +3,8 @@ name: Hexo Deploy
 on:
   push:
     branches: [ main ]
-  # 允许手动触发
   workflow_dispatch:
 
-# 防止多个同时运行的部署互相干扰
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -19,20 +17,27 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Cache NPM dependencies
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: ${{ runner.OS }}-npm-cache-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.OS }}-npm-cache-
-      - run: npm install
-      - run: npm run build
+
+      - name: Install dependencies
+        run: npm install
+
+      # 🔥 关键：明确执行 hexo generate
+      - name: Generate static files
+        run: npx hexo clean && npx hexo generate
+
+      # 🔥 确认 public 目录存在（调试用，很有用）
+      - name: Check public folder
+        run: ls -la public
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -41,9 +46,11 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
